@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Результаты поиска</title>
+</head>
+<body>
+<h1>Результаты поиска для "{{ query }}"</h1>
+<ul>
+    {% for result in results %}
+    <li><a href="{{ result }}">{{ result }}</a></li>
+    {% endfor %}
+</ul>
+</body>
+</html>

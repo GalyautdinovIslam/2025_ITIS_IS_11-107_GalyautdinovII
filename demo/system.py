@@ -85,7 +85,7 @@ def vector_search(lemmas_tf_idf, tf_idf):
             result = numpy.dot(lemmas_tf, request_tf) / (numpy.linalg.norm(lemmas_tf) * numpy.linalg.norm(request_tf))
             if result != 0:
                 found[i] = result
-    return sorted(found, reverse=False)
+    return found
 
 
 class System:
@@ -103,4 +103,4 @@ class System:
         lemmas = parse_lemmas(keys, self.segmenter, self.news_morph_tagger, self.morph_vocab)
         tf_idf = calculate_tf_idf(keys, lemmas)
         found = vector_search(self.lemmas_tf_idf, tf_idf)
-        return [self.urls[index] for index in found]
+        return sorted([self.urls[index] for index in found], reverse=True)

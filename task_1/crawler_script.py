@@ -1,5 +1,6 @@
 import os
 import requests
+import time
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from zipfile import ZipFile
@@ -10,21 +11,21 @@ ixbt_news = ixbt + news
 suffix = '.html'
 
 UTF_8 = 'utf-8'
-html_directory = './task_1/html_directory'
+txt_directory = './task_1/txt_directory'
 index_file = './task_1/index.txt'
-zip_filename = './task_1/html.zip'
+zip_filename = './task_1/txt.zip'
 
 bad_tags = [
     'script', 'link', 'style'
 ]
 
 
-def get_website_urls():
-    date = datetime.now()
+def get_website_urls(start_date, pages_needed):
+    date = start_date
     websites = set()
-    while len(websites) < 100:
-        date = date - timedelta(days=1)
+    while len(websites) < pages_needed:
         formatted_date = date.strftime("%Y/%m/%d")
+        time.sleep(5)
         response = requests.get(ixbt_news + formatted_date)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -32,15 +33,13 @@ def get_website_urls():
             filtered_links = [link for link in links if link.startswith(news) and link.endswith(suffix)]
             for link in filtered_links:
                 websites.add(ixbt + link)
-                # Можно раскомментировать код ниже, чтобы скачать ровно 100. Либо оставить в комментариях,
-                # чтобы скачать 100 и более (возьмёт все ссылки на уже скачанной странице)
-
-                # if len(websites) >= 100:
-                #     return websites
-    return websites
+                if len(websites) >= pages_needed:
+                    break
+        date = date - timedelta(days=1)
+    return websites, date
 
 
-def create_html_directory(directory):
+def create_directory(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
@@ -51,10 +50,17 @@ def handle_response(response, tags_for_removal, directory, idx):
         for script in soup(tags_for_removal):
             script.extract()
 
-        filename = f'{directory}/page_{idx}.html'
-        with open(filename, 'w', encoding=UTF_8) as html_file:
-            html_file.write(soup.prettify())
+        clean_text = soup.get_text(separator='\n', strip=True)
+
+        # if len(clean_text.split()) <= 1000:
+        #     return False
+
+        filename = f'{directory}/page_{idx}.txt'
+        with open(filename, 'w', encoding=UTF_8) as txt_file:
+            txt_file.write(clean_text)
+        print('Успешно: ', idx)
         return True
+
     return False
 
 
@@ -67,16 +73,28 @@ def create_zip_file(filename, directory):
 
 
 def main():
-    websites = get_website_urls()
-    create_html_directory(html_directory)
+    total_pages_needed = 100
+    downloaded_pages = 0
+    current_date = datetime.now()
+
+    create_directory(txt_directory)
 
     with open(index_file, 'w') as index:
-        for idx, url in enumerate(websites, start=1):
-            response = requests.get(url)
-            if handle_response(response, bad_tags, html_directory, idx):
-                index.write(f'{idx} {url}\n')
+        while downloaded_pages < total_pages_needed:
+            print('Ислам, тут не хватило, мы пробуем снова: ', downloaded_pages)
+            websites, current_date = get_website_urls(current_date, total_pages_needed - downloaded_pages)
 
-    create_zip_file(zip_filename, html_directory)
+            for idx, url in enumerate(websites, start=downloaded_pages + 1):
+                time.sleep(2)
+                response = requests.get(url)
+                if handle_response(response, bad_tags, txt_directory, idx):
+                    index.write(f'{idx} {url}\n')
+                    downloaded_pages += 1
+
+                    if downloaded_pages >= total_pages_needed:
+                        break
+
+    create_zip_file(zip_filename, txt_directory)
 
 
 if __name__ == '__main__':

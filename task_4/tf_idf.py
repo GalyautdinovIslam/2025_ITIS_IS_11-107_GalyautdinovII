@@ -76,13 +76,18 @@ def count_lemma(lemma, tokens, texts):
 
 def save_table(filename, data):
     with open(filename, 'a', encoding=UTF_8) as file:
-        for word, idf, tf_idf in data:
-            file.write(f"{word} {idf} {tf_idf}\n")
+        for word, tf, idf, tf_idf in data:
+            file.write(f"{word} {tf} {idf} {tf_idf}\n")
+
+    # with open(filename, 'w', encoding=UTF_8) as file:
+    #     file.write(f"{'Term':<20}{'TF':<10}{'IDF':<10}{'TF-IDF':<10}\n")
+    #     file.write('-' * 50 + '\n')
+    #     for word, tf, idf, tf_idf in data:
+    #         file.write(f"{word:<20}{tf:<10.6f}{idf:<10.6f}{tf_idf:<10.6f}\n")
 
     # with open(filename, 'w', encoding=UTF_8) as file:
     #     file.write(f"{'Term':<30}{'IDF':<15}{'TF-IDF':<15}\n")
     #     file.write('-' * 60 + '\n')
-    #
     #     for word, idf, tf_idf in data:
     #         file.write(f"{word:<30}{idf:<15.6f}{tf_idf:<15.6f}\n")
 
@@ -107,7 +112,7 @@ def main():
             tf = counter[token] / len(text_tokenizator.tokens)
             idf = math.log(len(texts) / max(1, count(token, texts)))
             tf_idf = tf * idf
-            token_data.append((token, round(idf, 6), round(tf_idf, 6)))
+            token_data.append((token, round(tf, 6), round(idf, 6), round(tf_idf, 6)))
 
         lemma_data = []
         for lemma, tokens in text_tokenizator.lemmas.items():
@@ -117,7 +122,7 @@ def main():
             tf = cnt / len(text_tokenizator.tokens)
             idf = math.log(len(texts) / max(1, count_lemma(lemma, tokens, texts)))
             tf_idf = tf * idf
-            lemma_data.append((lemma, round(idf, 6), round(tf_idf, 6)))
+            lemma_data.append((lemma, round(tf, 6), round(idf, 6), round(tf_idf, 6)))
 
         save_table(PREFIX_TOKENS + str(index) + SUFFIX_TXT, sorted(token_data))
         save_table(PREFIX_LEMMAS + str(index) + SUFFIX_TXT, sorted(lemma_data))

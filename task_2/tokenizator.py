@@ -2,9 +2,8 @@ import collections
 import nltk
 import os
 import pymorphy3
-from bs4 import BeautifulSoup
 
-html_directory = './html_directory'
+txt_directory = './txt_directory'  # Изменил путь на txt_directory
 tokens_file = './tokens.txt'
 lemmas_file = './lemmas.txt'
 BAD_TOKENS = {
@@ -22,16 +21,14 @@ BAD_TOKENS = {
 UTF_8 = 'utf-8'
 RUSSIAN = 'russian'
 
-
 def get_text(directory):
     texts = []
     for filename in os.listdir(directory):
-        file_path = directory + '/' + filename
-        with open(file_path, 'r', encoding=UTF_8) as file:
-            soup = BeautifulSoup(file.read(), 'html.parser')
-            texts.append(' '.join(soup.stripped_strings))
+        if filename.endswith('.txt'):
+            file_path = os.path.join(directory, filename)
+            with open(file_path, 'r', encoding=UTF_8) as file:
+                texts.append(file.read())
     return ' '.join(texts)
-
 
 def processing(directory, tokenizer, stop_words, morphy):
     tokens = set()
@@ -54,14 +51,12 @@ def processing(directory, tokenizer, stop_words, morphy):
 
     return tokens, lemmas
 
-
 def save(tokens, lemmas, tokens_filename, lemmas_filename):
     with open(tokens_filename, 'w', encoding=UTF_8) as file:
         file.write('\n'.join(tokens) + '\n')
     with open(lemmas_filename, 'w', encoding=UTF_8) as file:
         for lemma, tokens in lemmas.items():
-            file.write(f'{lemma} {' '.join(tokens)}\n')
-
+            file.write(f'{lemma} {" ".join(tokens)}\n')
 
 def main():
     nltk.download('stopwords')
@@ -70,9 +65,8 @@ def main():
     tokenizer = nltk.tokenize.WordPunctTokenizer()
     morphy = pymorphy3.MorphAnalyzer()
 
-    tokens, lemmas = processing(html_directory, tokenizer, stop_words, morphy)
+    tokens, lemmas = processing(txt_directory, tokenizer, stop_words, morphy)
     save(tokens, lemmas, tokens_file, lemmas_file)
-
 
 if __name__ == '__main__':
     main()

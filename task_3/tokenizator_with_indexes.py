@@ -2,9 +2,8 @@ import collections
 import nltk
 import os
 import pymorphy3
-from bs4 import BeautifulSoup
 
-html_directory = './html_directory'
+txt_directory = './txt_directory'
 tokens_file = './tokens.txt'
 lemmas_file = './lemmas.txt'
 indexes_file = './indexes.txt'
@@ -35,11 +34,11 @@ def get_index(filename):
 def get_text(directory):
     texts = collections.defaultdict(str)
     for filename in os.listdir(directory):
-        file_path = directory + '/' + filename
-        index = int(get_index(filename))
-        with open(file_path, 'r', encoding=UTF_8) as file:
-            soup = BeautifulSoup(file.read(), 'html.parser')
-            texts[index] = ' '.join(soup.stripped_strings)
+        if filename.endswith('.txt'):
+            file_path = os.path.join(directory, filename)
+            index = int(get_index(filename))
+            with open(file_path, 'r', encoding=UTF_8) as file:
+                texts[index] = file.read()
     return texts
 
 
@@ -63,21 +62,25 @@ def processing(directory, tokenizer, stop_words, morphy):
                 continue
             tokens.add(token)
             if morph[0].score >= 0.5:
-                lemmas[morph[0].normal_form].add(token)
-                indexes[morph[0].normal_form].add(index)
+                normal_form = morph[0].normal_form
+                lemmas[normal_form].add(token)
+                indexes[normal_form].add(index)
 
     return tokens, lemmas, indexes
 
 
 def save(tokens, lemmas, indexes, tokens_filename, lemmas_filename, indexes_filename):
     with open(tokens_filename, 'w', encoding=UTF_8) as file:
-        file.write('\n'.join(tokens) + '\n')
+        file.write('\n'.join(sorted(tokens)) + '\n')
+
     with open(lemmas_filename, 'w', encoding=UTF_8) as file:
-        for lemma, tokens in lemmas.items():
-            file.write(f'{lemma} {' '.join(tokens)}\n')
+        for lemma in sorted(lemmas.keys()):
+            file.write(f'{lemma} {" ".join(sorted(lemmas[lemma]))}\n')
+
     with open(indexes_filename, 'w', encoding=UTF_8) as file:
-        for lemma, index_set in indexes.items():
-            file.write(f'{lemma} {' '.join(list(map(str, sorted(index_set))))}\n')
+        for lemma in sorted(indexes.keys()):
+            sorted_indexes = sorted(indexes[lemma])
+            file.write(f'{lemma} {" ".join(map(str, sorted_indexes))}\n')
 
 
 def main():
@@ -87,7 +90,7 @@ def main():
     tokenizer = nltk.tokenize.WordPunctTokenizer()
     morphy = pymorphy3.MorphAnalyzer()
 
-    tokens, lemmas, indexes = processing(html_directory, tokenizer, stop_words, morphy)
+    tokens, lemmas, indexes = processing(txt_directory, tokenizer, stop_words, morphy)
     save(tokens, lemmas, indexes, tokens_file, lemmas_file, indexes_file)
 
 

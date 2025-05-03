@@ -1,12 +1,10 @@
 import collections
 import math
-
 import nltk
 import os
 import pymorphy3
-from bs4 import BeautifulSoup
 
-html_directory = './html_directory'
+txt_directory = './txt_directory'
 BAD_TOKENS = {
     'NUMB',  # Числа
     'ROMN',  # Римские числа
@@ -27,7 +25,6 @@ SUFFIX_TXT = '.txt'
 
 
 class Tokenizator:
-
     def __init__(self, text):
         self.text = text
         self.tokenizer = nltk.tokenize.WordPunctTokenizer()
@@ -54,67 +51,76 @@ class Tokenizator:
 
 
 def get_index(filename):
-    result = ''
-    for char in filename:
-        if char.isdigit():
-            result += char
-    return result
+    return ''.join(filter(str.isdigit, filename))
 
 
 def get_text(directory):
     texts = collections.defaultdict(str)
     for filename in os.listdir(directory):
-        file_path = directory + '/' + filename
-        index = int(get_index(filename))
-        with open(file_path, 'r', encoding=UTF_8) as file:
-            soup = BeautifulSoup(file.read(), 'html.parser')
-            texts[index] = ' '.join(soup.stripped_strings)
+        if filename.endswith('.txt'):
+            file_path = os.path.join(directory, filename)
+            index = int(get_index(filename))
+            with open(file_path, 'r', encoding=UTF_8) as file:
+                texts[index] = file.read()
     return texts
 
 
 def count(token, texts):
-    cnt = 0
-    for text in texts.values():
-        if token in text.lower():
-            cnt += 1
-    return cnt
+    return sum(1 for text in texts.values() if token in text.lower())
 
 
 def count_lemma(lemma, tokens, texts):
-    cnt = 0
-    for text in texts.values():
-        if any(token in text.lower() for token in tokens) or lemma in text.lower():
-            cnt += 1
-    return cnt
+    return sum(1 for text in texts.values()
+               if any(token in text.lower() for token in tokens) or lemma in text.lower())
 
 
-def save(filename, word, idf, tf_idf):
+def save_table(filename, data):
     with open(filename, 'a', encoding=UTF_8) as file:
-        file.write(f"{word} {idf} {tf_idf}\n")
+        for word, idf, tf_idf in data:
+            file.write(f"{word} {idf} {tf_idf}\n")
+
+    # with open(filename, 'w', encoding=UTF_8) as file:
+    #     file.write(f"{'Term':<30}{'IDF':<15}{'TF-IDF':<15}\n")
+    #     file.write('-' * 60 + '\n')
+    #
+    #     for word, idf, tf_idf in data:
+    #         file.write(f"{word:<30}{idf:<15.6f}{tf_idf:<15.6f}\n")
 
 
 def main():
-    texts = get_text(html_directory)
+    nltk.download('stopwords')
+
+    os.makedirs('tokens', exist_ok=True)
+    os.makedirs('lemmas', exist_ok=True)
+
+    texts = get_text(txt_directory)
     keys = sorted(texts.keys())
+
     for index in keys:
         text = texts[index]
         text_tokenizator = Tokenizator(text)
         text_tokenizator.processing()
         counter = collections.Counter(text_tokenizator.tokens)
+
+        token_data = []
         for token in text_tokenizator.tokens:
             tf = counter[token] / len(text_tokenizator.tokens)
-            idf = math.log(len(texts) / count(token, texts))
+            idf = math.log(len(texts) / max(1, count(token, texts)))
             tf_idf = tf * idf
-            save(PREFIX_TOKENS + str(index) + SUFFIX_TXT, token, idf, tf_idf)
-        for lemma in text_tokenizator.lemmas.keys():
-            cnt = counter[lemma]
-            tokens = text_tokenizator.lemmas.get(lemma)
+            token_data.append((token, round(idf, 6), round(tf_idf, 6)))
+
+        lemma_data = []
+        for lemma, tokens in text_tokenizator.lemmas.items():
+            cnt = counter.get(lemma, 0)
             for token in tokens:
-                cnt += counter[token]
+                cnt += counter.get(token, 0)
             tf = cnt / len(text_tokenizator.tokens)
-            idf = math.log(len(texts) / count_lemma(lemma, tokens, texts))
+            idf = math.log(len(texts) / max(1, count_lemma(lemma, tokens, texts)))
             tf_idf = tf * idf
-            save(PREFIX_LEMMAS + str(index) + SUFFIX_TXT, lemma, idf, tf_idf)
+            lemma_data.append((lemma, round(idf, 6), round(tf_idf, 6)))
+
+        save_table(PREFIX_TOKENS + str(index) + SUFFIX_TXT, sorted(token_data))
+        save_table(PREFIX_LEMMAS + str(index) + SUFFIX_TXT, sorted(lemma_data))
 
 
 if __name__ == '__main__':

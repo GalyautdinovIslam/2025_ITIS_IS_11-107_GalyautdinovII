@@ -6,9 +6,13 @@ import nltk
 
 
 def tokenize(text):
-    cleaned_text = re.sub(r'[^\w\s-]', ' ', text.lower())
-    tokens = re.findall(r'\b\w+\b', cleaned_text)
+    cleaned_text = re.sub(r'[^а-яёА-ЯЁ\s-]', ' ', text.lower())
+    tokens = re.findall(r'\b[а-яё]+\b', cleaned_text)
     return tokens
+
+
+def is_russian(word):
+    return word.score > 0.8
 
 
 class TextProcessor:
@@ -17,7 +21,6 @@ class TextProcessor:
         self.morph = MorphAnalyzer()
         self.russian_stopwords = set(stopwords.words('russian'))
 
-
     def lemmatize(self, tokens):
         lemmas = []
         for token in tokens:
@@ -25,6 +28,10 @@ class TextProcessor:
                 continue
 
             parsed = self.morph.parse(token)[0]
+
+            if not is_russian(parsed):
+                continue
+
             lemma = parsed.normal_form
             lemmas.append(lemma)
         return lemmas
